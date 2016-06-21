@@ -1,0 +1,143 @@
+1、解压缩之 /usr/local 官方的要求，并且名称必须是mysql
+   tar xf mysql****.tar.gz -C /usr/local
+
+2、创建链接
+   cd /usr/local
+   ln -sv mysql***** mysql
+
+*3、进入mysql目录，查看属主属组
+   cd mysql
+   
+4、创建mysql用户mysql组(超过500的就不是系统用户了,系统用户没有家目录)
+   groupadd -r -g 306 mysql
+   useradd -r -g 306 -u 306 mysql
+
+*5、再次进入mysql目录，里面有个INSTALL-BINARY的文件，里面有具体的安装说明。
+
+6、修改mysql目录下所有文件的属主属组(可以一步完成)
+   chown -R mysql.mysql /usr/local/mysql/*
+
+7、进入mysql目录，手动执行数据库初始化脚本
+   创建数据目录（根据需要指定）
+   修改数据目录：chown -R mysql.mysql 数据目录
+                 chmod o-rx 数据目录
+   （保证数据目录的属主属组是mysql，其他用户没有任何权限）
+    scripts/mysql_install_db --user=mysql --datadir=数据目录
+
+8、脚本执行完之后，要把mysql目录的属主改成root
+   chown -R root /usr/local/mysql/*
+
+9、在mysql/support-files目录下有mysqll.server（mysql启动脚本）
+   复制并重命名该脚本
+   cp support-files/mysql.server /etc/init.d/mysqld
+   查看一下mysqld是否有执行权限，没有就给执行权限
+   将mysqld加入到服务列表
+   chkconfig --add mysqld
+   查看是否自动启动是否开启
+   chkconfig --list mysqld  (2 3 4 5 为on即可)
+   
+10、此时mysqld还不能启动，需要修改一下配置文件
+    默认位置： /etc/my.cnf
+    mysql读取配置文件的方式非常独特
+    mysql配置文件是片段式的、集中式的（可以为多个服务配置）
+   [mysql]——客户端配置
+   [mysqld]——服务端配置
+   [client]——对所有的客户端程序都生效
+   mysql读取配置文件的顺序：
+   /etc/my.cnf --> /etc/mysql/my.cnf
+   --> $BASEDIR/my.cnf (通常是安装目录)
+   --> ~/.my.cnf (用户家目录下的配置文件，即使mysql用户没有家目录也找一遍)
+   如果找到的四处配置文件有冲突，以最后一个为准（后一个覆盖前一个）
+   即使没有任何配置文件，mysql也能跑，在support-files目录下提供了一堆默认配置文件
+   复制一个配置文件到 /etc/my.cnf
+   cp support-files/my-large.cnf /etc/my.cnf
+   进行编辑修改配置文件
+   vi /etc/my.cnf
+      在[mysqld]片段中加上数据目录配置信息，至关重要
+      datadir = /数据目录
+
+11、启动mysqld服务
+   service mysqld start
+   查看启动状态
+   netstat -tnlp
+
+12、进入mysql数据库
+   执行mysql发现找不到命令
+   查看 ls /usr/local/mysql/bin/
+   发现有 mysql 命令
+   需要将mysql命令添加至系统目录
+   创建脚本文件：
+   vi /etc/profile.d/mysql.sh
+      添加 export PATH=$PATH:/usr/local/mysql/bin
+      保存退出
+   重新登陆，再次执行 mysql 就能进入mysql数据库啦
+
+13、mysql服务器维护了两类变量
+    服务器变量：定义MySQL服务器运行特征
+      查看命令：show global variables [like 'data%'] (调优时使用)
+    状态变量：保存了MySQL服务器运行时的统计数据
+      查看命令：show global status [like 'datadir'] （实时监控使用）
+
+14、设定密码
+    [方法一]在mysql提示符下执行
+    mysql>set password for 'username'@'host'=password('password');
+    修改用户信息之后，要重读授权表
+    mysql>flush privileges;
+    [方法二]在Linux命令提示符下执行
+    # mysqladmin -uUsername -hHost -p password 'password'(如果没有密码可以省略-p)
+    [方法三]修改mysql库中的user表
+    update user set Password=password("password") where user="user" and host="***"
+
+    创建mysql的root用户远程访问（对所有库.所有表）
+    mysql>grant all privileges on *.* to 'root'@'192.16.%.%' identified by "password";
+    重读授权表
+    mysql>flush privileges;
+
+   [方法四]安装完之后提示的密码修改方式：
+   ./bin/mysqladmin -u root password 'new-password'
+   ./bin/mysqladmin -u root -h localhost.localdomain password 'new-password'
+
+
+*15、将mysql帮助文档添加至帮助命令
+    vi /etc/man.config
+      添加一行
+      MANPATH /usr/local/mysql/man
+      保存退出
+
+*16、导出头文件
+*17、导出输出文件
+*18、导出库文件
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
+
+
+
+
+
+
+
